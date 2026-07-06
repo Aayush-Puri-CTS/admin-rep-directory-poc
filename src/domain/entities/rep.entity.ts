@@ -3,6 +3,7 @@ import { RepBusinessInfo } from '../value-objects/rep-business-info.vo';
 import { RepId } from '../value-objects/rep-id.vo';
 import { RepPersonalInfo } from '../value-objects/rep-personal-info.vo';
 import { RepStatus } from '../value-objects/rep-status';
+import { RepType } from '../value-objects/rep-type';
 
 export interface RepDomainEvent {
   type: string;
@@ -20,11 +21,7 @@ export interface RepProps {
   accessControl: AccessControl;
   /** Parent Rep in the downline hierarchy; null for root Reps. */
   uplineRepId: RepId | null;
-  /**
-   * OQ-1: rep_type values are not enumerated in the matrix.
-   * Stored as a nullable string until the legacy type list is confirmed.
-   */
-  repType: string | null;
+  repType: RepType | null;
   bio: string | null;
   isEliteBlue: boolean;
   createdAt: Date;
@@ -40,7 +37,7 @@ export class Rep {
   private _businessInfo: RepBusinessInfo | null;
   private _accessControl: AccessControl;
   private _uplineRepId: RepId | null;
-  private _repType: string | null;
+  private _repType: RepType | null;
   private _bio: string | null;
   private _isEliteBlue: boolean;
   private _updatedAt: Date;
@@ -103,7 +100,7 @@ export class Rep {
   get uplineRepId(): RepId | null {
     return this._uplineRepId;
   }
-  get repType(): string | null {
+  get repType(): RepType | null {
     return this._repType;
   }
   get bio(): string | null {
