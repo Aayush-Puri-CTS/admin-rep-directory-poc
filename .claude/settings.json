@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "permissions": {
+    "deny": [
+      "Read(.env*)",
+      "Read(**/secrets/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Bash(aws *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(psql *)",
+      "Bash(mongosh *)",
+      "Bash(*prod*)",
+      "Bash(*production*)",
+      "Bash(npm install*)",
+      "Bash(npm add*)",
+      "Bash(yarn add*)",
+      "Bash(yarn install*)",
+      "WebFetch"
+    ],
+
+    "ask": [
+      "Bash(git push *)",
+      "Bash(pnpm exec prisma migrate *)",
+      "Bash(pnpm exec prisma db push*)",
+      "Write(prisma/schema.prisma)",
+      "Write(**/infrastructure/outbox/**)",
+      "Write(**/adapters/driven/nats/**)"
+    ],
+
+    "allow": [
+      "Read(**)",
+      "Write(src/**)",
+      "Edit(src/**)",
+      "Bash(pnpm lint*)",
+      "Bash(pnpm test*)",
+      "Bash(pnpm build*)",
+      "Bash(pnpm exec eslint*)",
+      "Bash(pnpm exec jest*)",
+      "Bash(pnpm exec prisma generate)",
+      "Bash(pnpm exec prisma validate)",
+      "Bash(pnpm install)",
+      "Bash(pnpm add *)",
+      "Bash(git status)",
+      "Bash(git diff*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout -b task/*)"
+    ]
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-loop.sh",
+            "args": [],
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
