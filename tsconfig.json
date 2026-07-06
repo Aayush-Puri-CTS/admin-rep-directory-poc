@@ -15,8 +15,9 @@
     "strictNullChecks": true,
     "noImplicitAny": true,
     "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "types": ["node", "jest"]
   },
-  "include": ["src/**/*", "test/**/*", "jest.config.ts"],
+  "include": ["src/**/*", "test/**/*", "jest.config.ts", "prisma.config.ts"],
   "exclude": ["node_modules", "dist"]
 }
