@@ -1,6 +1,14 @@
 import { RepId } from '../value-objects/rep-id.vo';
 import { PartyRelationshipType } from '../value-objects/party-relationship-type';
 
+export interface PartyRelationshipDomainEvent {
+  type: string;
+  relationshipId: string;
+  repId: string;
+  occurredAt: Date;
+  payload?: Record<string, unknown>;
+}
+
 export interface PartyRelationshipProps {
   id: string;
   repId: RepId;
@@ -31,6 +39,8 @@ export class PartyRelationship {
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
+  private readonly _domainEvents: PartyRelationshipDomainEvent[] = [];
+
   private constructor(props: PartyRelationshipProps) {
     this.id = props.id;
     this.repId = props.repId;
@@ -42,9 +52,17 @@ export class PartyRelationship {
     this.updatedAt = props.updatedAt;
   }
 
+  get domainEvents(): ReadonlyArray<PartyRelationshipDomainEvent> {
+    return this._domainEvents;
+  }
+
+  clearDomainEvents(): void {
+    this._domainEvents.length = 0;
+  }
+
   static create(props: CreatePartyRelationshipProps): PartyRelationship {
     const now = new Date();
-    return new PartyRelationship({
+    const rel = new PartyRelationship({
       id: props.id,
       repId: props.repId,
       groupId: props.groupId,
@@ -54,6 +72,18 @@ export class PartyRelationship {
       createdAt: now,
       updatedAt: now,
     });
+    rel._domainEvents.push({
+      type: 'RepGroupLinked',
+      relationshipId: props.id,
+      repId: props.repId.value,
+      occurredAt: now,
+      payload: {
+        groupId: props.groupId,
+        relationshipType: props.relationshipType,
+        startDate: (props.startDate ?? now).toISOString(),
+      },
+    });
+    return rel;
   }
 
   static reconstitute(props: PartyRelationshipProps): PartyRelationship {
