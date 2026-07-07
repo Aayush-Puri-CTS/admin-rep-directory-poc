@@ -270,6 +270,14 @@ describe('updatePersonalInfo()', () => {
     rep.updatePersonalInfo(updated);
     expect(rep.personalInfo.firstName).toBe('Bob');
   });
+
+  it('raises RepPersonalInfoUpdated with firstName, lastName, email in payload', () => {
+    const rep = activeRep();
+    rep.updatePersonalInfo(makePersonalInfo({ firstName: 'Bob', email: 'bob@example.com' }));
+    const evt = rep.domainEvents.find((e) => e.type === 'RepPersonalInfoUpdated');
+    expect(evt?.payload?.firstName).toBe('Bob');
+    expect(evt?.payload?.email).toBe('bob@example.com');
+  });
 });
 
 describe('updateBusinessInfo()', () => {
@@ -283,6 +291,20 @@ describe('updateBusinessInfo()', () => {
     const rep = activeRep();
     rep.updateBusinessInfo(null);
     expect(rep.businessInfo).toBeNull();
+  });
+
+  it('raises RepBusinessInfoUpdated with businessName in payload', () => {
+    const rep = activeRep();
+    rep.updateBusinessInfo(RepBusinessInfo.create({ businessName: 'Acme Corp' }));
+    const evt = rep.domainEvents.find((e) => e.type === 'RepBusinessInfoUpdated');
+    expect(evt?.payload?.businessName).toBe('Acme Corp');
+  });
+
+  it('raises RepBusinessInfoUpdated with businessName null when cleared', () => {
+    const rep = activeRep();
+    rep.updateBusinessInfo(null);
+    const evt = rep.domainEvents.find((e) => e.type === 'RepBusinessInfoUpdated');
+    expect(evt?.payload?.businessName).toBeNull();
   });
 });
 
