@@ -95,6 +95,7 @@ model Rep {
   licenses           RepLicense[]
   documents          RepDocument[]
   administratorUsers RepAdministratorUser[]
+  groupRelationships PartyRelationship[]
 
   @@map("reps")
 }
@@ -205,4 +206,34 @@ model RepAdministratorUser {
   updatedAt DateTime @updatedAt
 
   @@map("rep_administrator_users")
+}
+
+// ─── Party Relationships ──────────────────────────────────────────────────────
+// Models directed relationships between two parties (e.g. Rep → Group).
+// groupId is a plain String until the Group entity is introduced with its own table.
+//
+// ⚠️  SERVICES_GROUP is a proposed enum value — confirm against the legacy
+//     PartyRelationshipType enum (or team convention) before running migrations.
+
+/// ⚠️ SERVICES_GROUP is proposed — confirm before migrating (see docs/rep-domain-model.md).
+enum PartyRelationshipType {
+  SERVICES_GROUP
+}
+
+model PartyRelationship {
+  id               String                @id @default(uuid())
+  repId            String
+  /// Group (Employer) ID — plain String until the Group entity has its own table.
+  groupId          String
+  relationshipType PartyRelationshipType
+  startDate        DateTime              @default(now())
+  endDate          DateTime?
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([repId, groupId, relationshipType])
+  @@map("party_relationships")
 }
