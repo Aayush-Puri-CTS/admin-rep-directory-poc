@@ -237,3 +237,21 @@ model PartyRelationship {
   @@unique([repId, groupId, relationshipType])
   @@map("party_relationships")
 }
+
+// ─── Transactional Outbox ─────────────────────────────────────────────────────
+// Domain events are written here in the same DB transaction as the aggregate
+// save. The OutboxRelayService (next task) polls this table and publishes to
+// NATS, then sets publishedAt.
+
+model OutboxEvent {
+  id          String    @id @default(uuid())
+  eventType   String
+  aggregateId String
+  payload     Json
+  occurredAt  DateTime
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([publishedAt])
+  @@map("outbox_events")
+}
