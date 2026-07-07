@@ -11,7 +11,9 @@
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test:cov": "jest --coverage",
+    "arch:check": "depcruise --validate .dependency-cruiser.js src/",
+    "arch:report": "depcruise src/ --output-type html --output-to depcruise-report.html"
   },
   "devDependencies": {
     "@types/jest": "^29.5.12",
@@ -19,6 +21,7 @@
     "@types/pg": "^8.20.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "dependency-cruiser": "^18.0.0",
     "eslint": "^8.56.0",
     "jest": "^29.7.0",
     "prisma": "^7.8.0",
