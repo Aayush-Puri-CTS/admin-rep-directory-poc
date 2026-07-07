@@ -76,7 +76,17 @@ export class Rep {
       createdAt: now,
       updatedAt: now,
     });
-    rep.pushEvent({ type: 'RepCreated', repId: props.id.value, occurredAt: now });
+    rep.pushEvent({
+      type: 'RepCreated',
+      repId: props.id.value,
+      occurredAt: now,
+      payload: {
+        firstName: props.personalInfo.firstName,
+        lastName: props.personalInfo.lastName,
+        email: props.personalInfo.email,
+        repType: props.repType ?? null,
+      },
+    });
     return rep;
   }
 
@@ -178,11 +188,29 @@ export class Rep {
   updatePersonalInfo(info: RepPersonalInfo): void {
     this._personalInfo = info;
     this.touch();
+    this.pushEvent({
+      type: 'RepPersonalInfoUpdated',
+      repId: this.id.value,
+      occurredAt: this._updatedAt,
+      payload: {
+        firstName: info.firstName,
+        lastName: info.lastName,
+        email: info.email,
+      },
+    });
   }
 
   updateBusinessInfo(info: RepBusinessInfo | null): void {
     this._businessInfo = info;
     this.touch();
+    this.pushEvent({
+      type: 'RepBusinessInfoUpdated',
+      repId: this.id.value,
+      occurredAt: this._updatedAt,
+      payload: {
+        businessName: info?.businessName ?? null,
+      },
+    });
   }
 
   updateAccessControl(control: AccessControl): void {
