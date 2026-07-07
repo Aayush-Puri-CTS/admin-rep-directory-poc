@@ -1,0 +1,208 @@
+// prisma/schema.prisma
+//
+// Tier C — any change to this file requires a DB/Prisma-familiar reviewer
+// in addition to the standard reviewer (see CLAUDE.md § Autonomy tiers).
+//
+// Open questions referenced below are documented in docs/rep-domain-model.md.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+// Keep in sync with the matching enums under src/domain/value-objects/.
+
+enum RepStatus {
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  SOFT_DELETED
+}
+
+/// Distribution hierarchy level. See docs/rep-domain-model.md § RepType.
+enum RepType {
+  AGENT
+  BROKER
+  GA
+  MGA
+  SUPER_GA
+}
+
+/// Confirmed from "Check Enrollprime / Extra Health / Assure Health" matrix actions.
+enum RepPlatform {
+  ENROLLPRIME
+  EXTRA_HEALTH
+  ASSURE_HEALTH
+}
+
+/// Binary confirmed — "Check [platform] Downline Rep Access" naming implies has/doesn't-have.
+enum PlatformAccessType {
+  ENABLED
+  DISABLED
+}
+
+/// Address categories. See docs/rep-domain-model.md § RepAddressType.
+enum RepAddressType {
+  MAILING
+  BUSINESS
+  HOME
+  BILLING
+}
+
+// ─── Rep (core Party-Role record) ────────────────────────────────────────────
+
+model Rep {
+  id String @id @default(uuid())
+
+  // Personal info — maps to RepPersonalInfo value object
+  firstName   String
+  lastName    String
+  middleName  String?
+  email       String    @unique
+  cellPhone   String?
+  telephone   String?
+  fax         String?
+  num800      String?
+  dateOfBirth DateTime?
+  /// Sensitive — mask to last-4 in all read responses. Production requires column-level encryption.
+  ssn         String?
+
+  // Business info — maps to RepBusinessInfo value object (optional; absent for individual Reps)
+  businessName  String?
+  businessTaxId String? // TIN / EIN — matrix uses both business_tax_id and tin
+  businessEmail String?
+
+  // Rep metadata
+  status      RepStatus @default(PENDING_APPROVAL)
+  repType     RepType?
+  bio         String?
+  isEliteBlue Boolean   @default(false)
+
+  // Upline hierarchy — self-referential; null uplineRepId means this is a root Rep
+  uplineRepId  String?
+  uplineRep    Rep?    @relation("RepUpline", fields: [uplineRepId], references: [id])
+  downlineReps Rep[]   @relation("RepUpline")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  platformAccess     RepPlatformAccess[]
+  addresses          RepAddress[]
+  licenses           RepLicense[]
+  documents          RepDocument[]
+  administratorUsers RepAdministratorUser[]
+
+  @@map("reps")
+}
+
+// ─── Platform access ─────────────────────────────────────────────────────────
+// Stores per-platform access flags for a Rep.
+// Matrix actions: Get Access Control, Update Access Control.
+
+model RepPlatformAccess {
+  id         String             @id @default(uuid())
+  repId      String
+  platform   RepPlatform
+  accessType PlatformAccessType @default(DISABLED)
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  @@unique([repId, platform])
+  @@map("rep_platform_access")
+}
+
+// ─── Rep Address Book ────────────────────────────────────────────────────────
+// Matrix actions: Add Address, Get Address List, Delete Address, Set Primary Address.
+
+model RepAddress {
+  id           String  @id @default(uuid())
+  repId        String
+  type         RepAddressType
+  payeeName    String?
+  address1     String
+  address2     String?
+  city         String
+  state        String
+  zip          String
+  isPrimary    Boolean @default(false)
+  isActive     Boolean @default(true)
+  uspsVerified Boolean @default(false)
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rep_addresses")
+}
+
+// ─── Rep Licenses ────────────────────────────────────────────────────────────
+// Matrix actions: Add Rep License, Add Rep License New, Delete Rep License,
+//                 Get Rep License, Remove Rep License.
+
+model RepLicense {
+  id              String    @id @default(uuid())
+  repId           String
+  state           String
+  licenseNumber   String
+  /// Type is ambiguous in matrix (boolean flag or a state code string) — stored as String.
+  licenseResident String?
+  /// Present on "Add Rep License New" action; links license to a specific downline Rep.
+  licenseFor      String?
+  expiryDate      DateTime?
+  /// Metadata only — external storage reference (e.g. S3 key); file bytes are not stored here.
+  licenseDocUrl   String?
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rep_licenses")
+}
+
+// ─── Rep Documents ───────────────────────────────────────────────────────────
+// Matrix actions: Add Docs, Delete Doc, Get Docs.
+// Metadata only — file bytes are stored externally; only the reference lives here.
+
+model RepDocument {
+  id         String   @id @default(uuid())
+  repId      String
+  fileTitle  String
+  docType    String
+  docNotes   String?
+  uploadedAt DateTime @default(now())
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rep_documents")
+}
+
+// ─── Rep Administrator Users ─────────────────────────────────────────────────
+// Matrix actions: Add Agent User, Update Agent Users,
+//                 Activate/Deactivate Agent User, Delete Agent Agent User.
+// These are portal sub-accounts under a Rep, not Rep records themselves.
+
+model RepAdministratorUser {
+  id                  String  @id @default(uuid())
+  repId               String
+  email               String
+  phone               String?
+  isActive            Boolean @default(true)
+  skipValidationEmail Boolean @default(false)
+  skipValidationPhone Boolean @default(false)
+
+  rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("rep_administrator_users")
+}

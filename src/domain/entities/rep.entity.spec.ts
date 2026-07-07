@@ -3,6 +3,7 @@ import { RepBusinessInfo } from '../value-objects/rep-business-info.vo';
 import { RepId } from '../value-objects/rep-id.vo';
 import { RepPersonalInfo } from '../value-objects/rep-personal-info.vo';
 import { RepStatus } from '../value-objects/rep-status';
+import { RepType } from '../value-objects/rep-type';
 import { Rep, RepProps } from './rep.entity';
 
 // ---------------------------------------------------------------------------
@@ -101,7 +102,7 @@ describe('Rep.reconstitute()', () => {
       status: RepStatus.ACTIVE,
       accessControl: AccessControl.defaultForNewRep(),
       uplineRepId: null,
-      repType: 'SENIOR',
+      repType: RepType.GA,
       bio: 'Experienced rep.',
       isEliteBlue: true,
       createdAt: now,
@@ -109,7 +110,7 @@ describe('Rep.reconstitute()', () => {
     };
     const rep = Rep.reconstitute(props);
     expect(rep.status).toBe(RepStatus.ACTIVE);
-    expect(rep.repType).toBe('SENIOR');
+    expect(rep.repType).toBe(RepType.GA);
     expect(rep.bio).toBe('Experienced rep.');
     expect(rep.isEliteBlue).toBe(true);
     expect(rep.domainEvents).toHaveLength(0);

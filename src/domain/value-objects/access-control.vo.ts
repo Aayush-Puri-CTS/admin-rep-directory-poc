@@ -1,18 +1,16 @@
 /**
- * Platforms confirmed from matrix actions:
+ * Platforms derived from matrix actions:
  *   "Check Enrollprime Downline Rep Access" → ENROLLPRIME
  *   "Check Extra Health Rep Access"         → EXTRA_HEALTH
- *
- * OQ-3: additional platform values may exist — see docs/rep-domain-model.md.
+ *   "Assure Health Reps"                    → ASSURE_HEALTH
  */
 export enum RepPlatform {
   ENROLLPRIME = 'ENROLLPRIME',
   EXTRA_HEALTH = 'EXTRA_HEALTH',
+  ASSURE_HEALTH = 'ASSURE_HEALTH',
 }
 
-/**
- * OQ-4: access_type semantics unconfirmed. ENABLED/DISABLED is a POC stand-in.
- */
+/** Binary flag confirmed by "Check [platform] Downline Rep Access" naming pattern. */
 export enum PlatformAccessType {
   ENABLED = 'ENABLED',
   DISABLED = 'DISABLED',
