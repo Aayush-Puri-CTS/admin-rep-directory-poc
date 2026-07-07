@@ -58,7 +58,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/verify-loop.sh",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-loop.sh",
             "args": [],
             "timeout": 120
           }
