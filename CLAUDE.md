@@ -106,8 +106,14 @@ implementation code:
 Prisma schema/migration changes are Tier C, not Tier D — no new ADR/branch mechanics required, just
 flag it clearly for a DB/Prisma-familiar reviewer in addition to the standard reviewer.
 
+## Commit convention
+
+- Create separate commits per file change, clearly mentioning what has been changed/implemented/refactored
+- Commit message format ( (task-name): commit msg )
+
 ## PR conventions
 
+- Title following branch naming format (e.g. feat(NUE-19426): implement theme fetching)
 - Every PR with Claude Code contribution gets the `ai-assisted` label
 - State the tier in the PR description
 - Local `pnpm lint && pnpm test` must pass before opening the PR — don't rely on CI to catch what
