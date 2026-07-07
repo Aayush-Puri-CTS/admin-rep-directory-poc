@@ -240,8 +240,9 @@ model PartyRelationship {
 
 // ─── Transactional Outbox ─────────────────────────────────────────────────────
 // Domain events are written here in the same DB transaction as the aggregate
-// save. The OutboxRelayService (next task) polls this table and publishes to
-// NATS, then sets publishedAt.
+// save. OutboxRelayService polls this table and publishes to NATS, then sets
+// publishedAt. Rows with retryCount >= MAX_RETRIES are skipped by the relay
+// and must be investigated manually.
 
 model OutboxEvent {
   id          String    @id @default(uuid())
@@ -250,8 +251,10 @@ model OutboxEvent {
   payload     Json
   occurredAt  DateTime
   publishedAt DateTime?
+  /// Incremented on each publish failure. Relay skips rows at MAX_RETRIES (5).
+  retryCount  Int       @default(0)
   createdAt   DateTime  @default(now())
 
-  @@index([publishedAt])
+  @@index([publishedAt, retryCount])
   @@map("outbox_events")
 }
