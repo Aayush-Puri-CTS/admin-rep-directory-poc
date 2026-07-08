@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import { defineConfig } from 'prisma/config';
 
 // Prisma 7 moves the datasource URL out of schema.prisma and into this file.
