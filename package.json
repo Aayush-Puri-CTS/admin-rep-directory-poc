@@ -34,10 +34,13 @@
     "typescript": "^5.3.3"
   },
   "pnpm": {
-    "ignoredBuiltDependencies": ["@scarf/scarf"]
+    "ignoredBuiltDependencies": [
+      "@scarf/scarf"
+    ]
   },
   "dependencies": {
     "@nestjs/common": "^11.1.27",
+    "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.1.27",
     "@nestjs/platform-express": "^11.1.27",
     "@nestjs/swagger": "^11.4.5",
