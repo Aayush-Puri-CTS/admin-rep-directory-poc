@@ -1,4 +1,4 @@
-import { GetRepDirectoryHandler, GetRepDirectoryQuery } from './get-rep-directory.handler';
+import { GetRepDirectoryHandler } from './get-rep-directory.handler';
 import { IRepReadRepository, RepDirectoryPage, RepSummaryView } from './rep-read.port';
 import { RepStatus } from '../../domain/value-objects/rep-status';
 
