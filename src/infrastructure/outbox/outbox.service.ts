@@ -14,7 +14,7 @@ export class OutboxService {
       data: events.map((e) => ({
         eventType: e.eventType,
         aggregateId: e.aggregateId,
-        payload: e.payload,
+        payload: e.payload as Prisma.InputJsonValue,
         occurredAt: e.occurredAt,
       })),
     });
