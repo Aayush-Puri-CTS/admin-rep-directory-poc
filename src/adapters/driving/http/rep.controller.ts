@@ -11,6 +11,12 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
+import {
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { randomUUID } from 'crypto';
 
 import { CreateRepHandler } from '../../../application/commands/create-rep.handler';
@@ -33,6 +39,7 @@ import { UpdateAccessControlBodyDto } from './dtos/rep/update-access-control.bod
 import { UpdateBusinessInfoBodyDto } from './dtos/rep/update-business-info.body.dto';
 import { UpdatePersonalInfoBodyDto } from './dtos/rep/update-personal-info.body.dto';
 
+@ApiTags('Reps')
 @Controller('reps')
 export class RepController {
   constructor(
@@ -51,6 +58,9 @@ export class RepController {
 
   @Post()
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create a new Rep' })
+  @ApiResponse({ status: 201, description: 'Rep created', schema: { example: { repId: 'uuid' } } })
+  @ApiResponse({ status: 400, description: 'Validation error' })
   async createRep(@Body() dto: CreateRepBodyDto): Promise<{ repId: string }> {
     const repId = randomUUID();
     await this.createRepHandler.execute({
@@ -76,16 +86,26 @@ export class RepController {
 
   // Declared before :repId to prevent "search" being matched as a path param
   @Get('search')
+  @ApiOperation({ summary: 'Search / filter Reps', description: 'All filters are optional and AND-combined' })
+  @ApiResponse({ status: 200, description: 'Matching Reps' })
+  @ApiResponse({ status: 400, description: 'Invalid filter value' })
   async searchReps(@Query() query: SearchRepsQueryDto) {
     return this.searchRepsHandler.execute(query);
   }
 
   @Get()
+  @ApiOperation({ summary: 'Paginated Rep directory', description: 'Lists all non-deleted Reps; defaults to page 1, page size 20' })
+  @ApiResponse({ status: 200, description: 'Directory page' })
+  @ApiResponse({ status: 400, description: 'Invalid pagination params' })
   async getDirectory(@Query() query: DirectoryQueryDto) {
     return this.getRepDirectoryHandler.execute(query);
   }
 
   @Get(':repId')
+  @ApiOperation({ summary: 'Get a Rep by ID' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'Rep detail view' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async getRepById(@Param('repId') repId: string) {
     const rep = await this.getRepByIdHandler.execute({ repId });
     if (rep === null) throw new NotFoundException(`Rep ${repId} not found`);
@@ -94,6 +114,11 @@ export class RepController {
 
   @Patch(':repId/personal-info')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Replace personal info for a Rep' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async updatePersonalInfo(
     @Param('repId') repId: string,
     @Body() dto: UpdatePersonalInfoBodyDto,
@@ -117,6 +142,11 @@ export class RepController {
 
   @Patch(':repId/business-info')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Replace business info for a Rep', description: 'Send `null` for `businessInfo` to remove it entirely' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async updateBusinessInfo(
     @Param('repId') repId: string,
     @Body() dto: UpdateBusinessInfoBodyDto,
@@ -137,6 +167,11 @@ export class RepController {
 
   @Patch(':repId/access-control')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Replace all platform access entries for a Rep' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Updated' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async updateAccessControl(
     @Param('repId') repId: string,
     @Body() dto: UpdateAccessControlBodyDto,
@@ -148,6 +183,10 @@ export class RepController {
 
   @Delete(':repId')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Soft-delete a Rep', description: 'Data is retained; recoverable via the restore endpoint' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Soft-deleted' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async softDeleteRep(@Param('repId') repId: string): Promise<void> {
     await this.softDeleteRepHandler
       .execute({ repId })
@@ -156,6 +195,10 @@ export class RepController {
 
   @Post(':repId/restore')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Restore a soft-deleted Rep' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Restored' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async restoreRep(@Param('repId') repId: string): Promise<void> {
     await this.restoreRepHandler
       .execute({ repId })
@@ -164,6 +207,11 @@ export class RepController {
 
   @Post(':repId/groups')
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Link a Rep to a Group (Employer)' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 201, description: 'Relationship created', schema: { example: { relationshipId: 'uuid' } } })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Rep or Group not found' })
   async linkRepToGroup(
     @Param('repId') repId: string,
     @Body() dto: LinkRepToGroupBodyDto,
@@ -181,6 +229,10 @@ export class RepController {
   }
 
   @Get(':repId/groups')
+  @ApiOperation({ summary: 'Get Groups serviced by a Rep' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 200, description: 'List of Groups' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
   async getGroupsServicedByRep(@Param('repId') repId: string) {
     return this.getGroupsServicedByRepHandler.execute({ repId });
   }
