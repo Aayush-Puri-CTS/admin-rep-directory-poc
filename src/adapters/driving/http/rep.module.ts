@@ -21,7 +21,6 @@ import { RepController } from './rep.controller';
 @Module({
   controllers: [RepController],
   providers: [
-    PrismaService,
     OutboxService,
     {
       provide: CreateRepHandler,
