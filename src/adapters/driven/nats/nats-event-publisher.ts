@@ -1,7 +1,9 @@
 // NOTE: nats@2.x is deprecated upstream — migrate to @nats-io/transport-node when upgrading.
 // ⚠️ NATS subject names below are a Tier D contract. Confirm with Lead/Architect and any
 //    consuming teams before any other service takes a dependency on these subjects.
+import { Injectable } from '@nestjs/common';
 import { connect, JSONCodec, NatsConnection } from 'nats';
+import { IEventPublisher } from '../../../domain/ports/event-publisher.port';
 
 export interface NatsMessage {
   eventType: string;
@@ -21,7 +23,8 @@ const SUBJECT_MAP: Record<string, string> = {
   RepGroupLinked: 'admin.rep.group-linked',
 };
 
-export class NatsEventPublisher {
+@Injectable()
+export class NatsEventPublisher implements IEventPublisher {
   private connection: NatsConnection | null = null;
   private readonly jc = JSONCodec<NatsMessage>();
 

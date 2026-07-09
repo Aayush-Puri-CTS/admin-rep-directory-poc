@@ -1,16 +1,26 @@
-import { NatsEventPublisher } from '../../adapters/driven/nats/nats-event-publisher';
+import { Inject, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { EVENT_PUBLISHER_TOKEN, IEventPublisher } from '../../domain/ports/event-publisher.port';
 import { PrismaService } from '../prisma/prisma.service';
 
 const MAX_RETRIES = 5;
 const BATCH_SIZE = 50;
 
-export class OutboxRelayService {
+@Injectable()
+export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly publisher: NatsEventPublisher,
+    @Inject(EVENT_PUBLISHER_TOKEN) private readonly publisher: IEventPublisher,
   ) {}
+
+  onModuleInit(): void {
+    this.start();
+  }
+
+  onModuleDestroy(): void {
+    this.stop();
+  }
 
   /** Start polling. intervalMs defaults to 5 000 ms; override via OUTBOX_POLL_INTERVAL_MS env var. */
   start(intervalMs?: number): void {
