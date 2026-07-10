@@ -65,6 +65,9 @@ Thumbs.db
 # dependency-cruiser generated report
 depcruise-report.html
 
+# Hook state (verify-loop.sh failure counters — transient, session-scoped)
+.claude/hooks/.state/
+
 # Package manager locks (pnpm-lock.yaml is committed; these are not)
 package-lock.json
 yarn.lock
