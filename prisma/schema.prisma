@@ -56,7 +56,8 @@ enum RepAddressType {
 // ─── Rep (core Party-Role record) ────────────────────────────────────────────
 
 model Rep {
-  id String @id @default(uuid())
+  id       String @id @default(uuid())
+  tenantId String
 
   // Personal info — maps to RepPersonalInfo value object
   firstName   String
@@ -97,6 +98,7 @@ model Rep {
   administratorUsers RepAdministratorUser[]
   groupRelationships PartyRelationship[]
 
+  @@index([tenantId])
   @@map("reps")
 }
 
@@ -106,6 +108,7 @@ model Rep {
 
 model RepPlatformAccess {
   id         String             @id @default(uuid())
+  tenantId   String
   repId      String
   platform   RepPlatform
   accessType PlatformAccessType @default(DISABLED)
@@ -113,6 +116,7 @@ model RepPlatformAccess {
   rep Rep @relation(fields: [repId], references: [id], onDelete: Cascade)
 
   @@unique([repId, platform])
+  @@index([tenantId])
   @@map("rep_platform_access")
 }
 
@@ -121,6 +125,7 @@ model RepPlatformAccess {
 
 model RepAddress {
   id           String  @id @default(uuid())
+  tenantId     String
   repId        String
   type         RepAddressType
   payeeName    String?
@@ -138,6 +143,7 @@ model RepAddress {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("rep_addresses")
 }
 
@@ -147,6 +153,7 @@ model RepAddress {
 
 model RepLicense {
   id              String    @id @default(uuid())
+  tenantId        String
   repId           String
   state           String
   licenseNumber   String
@@ -163,6 +170,7 @@ model RepLicense {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("rep_licenses")
 }
 
@@ -172,6 +180,7 @@ model RepLicense {
 
 model RepDocument {
   id         String   @id @default(uuid())
+  tenantId   String
   repId      String
   fileTitle  String
   docType    String
@@ -183,6 +192,7 @@ model RepDocument {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("rep_documents")
 }
 
@@ -193,6 +203,7 @@ model RepDocument {
 
 model RepAdministratorUser {
   id                  String  @id @default(uuid())
+  tenantId            String
   repId               String
   email               String
   phone               String?
@@ -205,6 +216,7 @@ model RepAdministratorUser {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([tenantId])
   @@map("rep_administrator_users")
 }
 
@@ -222,6 +234,7 @@ enum PartyRelationshipType {
 
 model PartyRelationship {
   id               String                @id @default(uuid())
+  tenantId         String
   repId            String
   /// Group (Employer) ID — plain String until the Group entity has its own table.
   groupId          String
@@ -235,6 +248,7 @@ model PartyRelationship {
   updatedAt DateTime @updatedAt
 
   @@unique([repId, groupId, relationshipType])
+  @@index([tenantId])
   @@map("party_relationships")
 }
 
@@ -246,6 +260,7 @@ model PartyRelationship {
 
 model OutboxEvent {
   id          String    @id @default(uuid())
+  tenantId    String
   eventType   String
   aggregateId String
   payload     Json
@@ -255,6 +270,6 @@ model OutboxEvent {
   retryCount  Int       @default(0)
   createdAt   DateTime  @default(now())
 
-  @@index([publishedAt, retryCount])
+  @@index([tenantId, publishedAt, retryCount])
   @@map("outbox_events")
 }
