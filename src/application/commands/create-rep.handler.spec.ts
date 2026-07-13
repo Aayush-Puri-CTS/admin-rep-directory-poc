@@ -58,6 +58,7 @@ describe('CreateRepHandler', () => {
 
   it('sets uplineRepId when provided', async () => {
     const { repo, savedRep } = makeRepo();
+    (repo.findById as jest.Mock).mockResolvedValueOnce({} as Rep);
     await new CreateRepHandler(repo).execute({ ...minimalCommand, uplineRepId: 'rep-0' });
     expect(savedRep().uplineRepId?.value).toBe('rep-0');
   });

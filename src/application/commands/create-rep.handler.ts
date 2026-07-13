@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { Rep } from '../../domain/entities/rep.entity';
 import { IRepRepository } from '../../domain/ports/rep-repository.port';
 import { RepBusinessInfo } from '../../domain/value-objects/rep-business-info.vo';
@@ -28,6 +29,13 @@ export class CreateRepHandler {
   constructor(private readonly repRepository: IRepRepository) {}
 
   async execute(command: CreateRepCommand): Promise<void> {
+    if (command.uplineRepId != null) {
+      const upline = await this.repRepository.findById(RepId.of(command.uplineRepId));
+      if (!upline) {
+        throw new NotFoundException(`Upline Rep '${command.uplineRepId}' does not exist`);
+      }
+    }
+
     const personalInfo = RepPersonalInfo.create({
       firstName: command.firstName,
       lastName: command.lastName,
