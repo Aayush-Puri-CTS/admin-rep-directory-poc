@@ -45,11 +45,14 @@ verification hook were written to match these assumptions, not the other way aro
    real customer/member records. Operate on source code, local commands, and synthetic/seed data
    only. If a task seems to require live data, stop and ask a human — do not proxy around this via
    exports, logs, or pasted query results.
-2. **Tenant context is never hardcoded.** Tenant isolation is structural (separate Keycloak realm +
-   separate DB schema per tenant, provisioned by the platform team) — not something this codebase
-   implements per query. Generated code must always resolve tenant context from the
-   platform-injected header/claim (`X-Tenant-Id`, resolved by the Lambda Authorizer from the JWT
-   issuer). Never accept a tenant identifier from a request parameter, query string, or literal.
+2. **Tenant context is never hardcoded.** Tenant isolation uses **shared tables + PostgreSQL
+   Row-Level Security** — every tenant-scoped table has a `tenant_id` column and an RLS policy
+   (`tenant_id = current_setting('app.current_tenant_id', true)`). The application sets the active
+   tenant via `SET LOCAL app.current_tenant_id = '<id>'` at the start of every transaction using
+   `PrismaService.withTenantTransaction()`. Generated code must always resolve the tenant ID from
+   the platform-injected header/claim (`X-Tenant-Id`, resolved by the Lambda Authorizer from the
+   JWT issuer) via `TenantContext`. Never accept a tenant identifier from a request parameter, query
+   string, or literal. See ADR-002 for the full design.
 3. **Group-scoped queries filter by `groupId`; not every Member has one.** `MEMBER_OF_GROUP` is an
    _optional_ `PartyRelationship` — present for Members enrolled under an employer/Group, absent
    for Members who enrolled independently through a Rep with no Group involved. The Rep↔Member
@@ -60,8 +63,9 @@ verification hook were written to match these assumptions, not the other way aro
    `groupId`; treat a missing filter there as a blocking defect, not a style nit. But a general
    Member list, search, or directory query must not assume `groupId` is present — it must handle a
    null/absent Group relationship without erroring or silently dropping independent Members.
-4. **Don't confuse Tenant and Group.** Tenant = separate platform client (own realm, own schema).
-   Group = an Employer, modeled as a `Party` with role `EMPLOYER`/`GROUP_ADMIN`, living inside one
+4. **Don't confuse Tenant and Group.** Tenant = separate platform client (own Keycloak realm,
+   isolated via `tenant_id` + RLS). Group = an Employer, modeled as a `Party` with role
+   `EMPLOYER`/`GROUP_ADMIN`, living inside one
    tenant's schema. If you're about to write "tenant scoping" for Group-level logic, it's the wrong
    term — check whether you actually mean Group isolation instead.
 5. **Hexagonal boundary is one-directional.** `domain/` and `application/` never import from
