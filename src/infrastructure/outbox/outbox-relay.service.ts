@@ -39,7 +39,16 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /** Single relay pass — queries unpublished events, publishes, marks as done or increments retryCount. */
+  /**
+   * Single relay pass — queries unpublished events, publishes, marks as done or increments retryCount.
+   *
+   * The discovery query below runs across all tenants (the relay has no per-request tenant, so
+   * there is no TenantContext to scope it to) and therefore must run on a connection/role that
+   * isn't blocked by the tenant_isolation RLS policy for outbox_events. Once an event is in hand,
+   * every subsequent write for it goes through withTenantTransaction(event.tenantId, ...) so the
+   * RLS policy still fires and cross-tenant writes are impossible even if event.tenantId were ever
+   * wrong.
+   */
   async relay(): Promise<void> {
     const events = await this.prisma.client.outboxEvent.findMany({
       where: { publishedAt: null, retryCount: { lt: MAX_RETRIES } },
@@ -55,16 +64,20 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
           event.occurredAt,
           event.payload as Record<string, unknown>,
         );
-        await this.prisma.client.outboxEvent.update({
-          where: { id: event.id },
-          data: { publishedAt: new Date() },
-        });
+        await this.prisma.withTenantTransaction(event.tenantId, (tx) =>
+          tx.outboxEvent.update({
+            where: { id: event.id },
+            data: { publishedAt: new Date() },
+          }),
+        );
       } catch (err: unknown) {
         console.error(`[OutboxRelay] Failed to publish event ${event.id} (${event.eventType})`, err);
-        await this.prisma.client.outboxEvent.update({
-          where: { id: event.id },
-          data: { retryCount: { increment: 1 } },
-        });
+        await this.prisma.withTenantTransaction(event.tenantId, (tx) =>
+          tx.outboxEvent.update({
+            where: { id: event.id },
+            data: { retryCount: { increment: 1 } },
+          }),
+        );
       }
     }
   }
