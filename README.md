@@ -52,6 +52,22 @@ src/
 
 Domain events are written to an `outbox_events` table in the **same transaction** as the aggregate save. `OutboxRelayService` polls the table and publishes to NATS. See [`/ADR/ADR-001-nats-event-contract.md`](./ADR/ADR-001-nats-event-contract.md) for the full NATS subject map and payload schemas.
 
+### Tenant isolation
+
+Tenants share a single set of tables, isolated by PostgreSQL **Row-Level Security** on a
+`tenantId` column — **not** by a schema-per-tenant boundary. `TenantMiddleware` reads
+`X-Tenant-Id` into an `AsyncLocalStorage`-backed `TenantContext`; every repository call runs
+inside `PrismaService.withTenantTransaction()`, which issues `SET LOCAL app.current_tenant_id`
+so the RLS policy scopes reads and writes to the active tenant. See
+[`/ADR/ADR-002-rls-tenant-isolation.md`](./ADR/ADR-002-rls-tenant-isolation.md) for the full
+design and its consequences.
+
+**Platform dependency:** `SET LOCAL` requires the connection pooler in front of Postgres to run
+in **transaction mode** (session-mode pooling would leak the setting across unrelated requests
+sharing a connection). The Platform team no longer needs to provision a per-tenant schema for
+this service — confirm both of these with Platform before relying on RLS in an environment they
+manage.
+
 ---
 
 ## Tech stack

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 export interface OutboxEventRecord {
+  tenantId: string;
   eventType: string;
   aggregateId: string;
   payload: Record<string, unknown>;
@@ -12,6 +13,7 @@ export class OutboxService {
     if (events.length === 0) return;
     await tx.outboxEvent.createMany({
       data: events.map((e) => ({
+        tenantId: e.tenantId,
         eventType: e.eventType,
         aggregateId: e.aggregateId,
         payload: e.payload as Prisma.InputJsonValue,

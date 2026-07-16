@@ -9,6 +9,7 @@ import { RepStatus } from '../../../domain/value-objects/rep-status';
 import { RepType } from '../../../domain/value-objects/rep-type';
 import { OutboxService } from '../../../infrastructure/outbox/outbox.service';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { TenantContext } from '../../../infrastructure/tenant/tenant-context';
 
 export class PrismaRepRepository implements IRepRepository {
   constructor(
@@ -17,52 +18,57 @@ export class PrismaRepRepository implements IRepRepository {
   ) {}
 
   async findById(id: RepId): Promise<Rep | null> {
-    const row = await this.prisma.client.rep.findUnique({
-      where: { id: id.value },
-      include: { platformAccess: true },
-    });
+    return this.prisma.withTenantTransaction(TenantContext.get(), async (tx) => {
+      const row = await tx.rep.findUnique({
+        where: { id: id.value },
+        include: { platformAccess: true },
+      });
 
-    if (!row) return null;
+      if (!row) return null;
 
-    return Rep.reconstitute({
-      id: RepId.of(row.id),
-      personalInfo: RepPersonalInfo.create({
-        firstName: row.firstName,
-        lastName: row.lastName,
-        middleName: row.middleName ?? undefined,
-        email: row.email,
-        cellPhone: row.cellPhone ?? undefined,
-        telephone: row.telephone ?? undefined,
-        fax: row.fax ?? undefined,
-        num800: row.num800 ?? undefined,
-        dateOfBirth: row.dateOfBirth ?? undefined,
-        ssn: row.ssn ?? undefined,
-      }),
-      businessInfo: row.businessName
-        ? RepBusinessInfo.create({
-            businessName: row.businessName,
-            businessTaxId: row.businessTaxId ?? undefined,
-            businessEmail: row.businessEmail ?? undefined,
-          })
-        : null,
-      status: row.status as RepStatus,
-      accessControl: AccessControl.create(
-        row.platformAccess.map((a) => ({
-          platform: a.platform as RepPlatform,
-          accessType: a.accessType as PlatformAccessType,
-        })),
-      ),
-      uplineRepId: row.uplineRepId ? RepId.of(row.uplineRepId) : null,
-      repType: row.repType as RepType | null,
-      bio: row.bio,
-      isEliteBlue: row.isEliteBlue,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      return Rep.reconstitute({
+        id: RepId.of(row.id),
+        personalInfo: RepPersonalInfo.create({
+          firstName: row.firstName,
+          lastName: row.lastName,
+          middleName: row.middleName ?? undefined,
+          email: row.email,
+          cellPhone: row.cellPhone ?? undefined,
+          telephone: row.telephone ?? undefined,
+          fax: row.fax ?? undefined,
+          num800: row.num800 ?? undefined,
+          dateOfBirth: row.dateOfBirth ?? undefined,
+          ssn: row.ssn ?? undefined,
+        }),
+        businessInfo: row.businessName
+          ? RepBusinessInfo.create({
+              businessName: row.businessName,
+              businessTaxId: row.businessTaxId ?? undefined,
+              businessEmail: row.businessEmail ?? undefined,
+            })
+          : null,
+        status: row.status as RepStatus,
+        accessControl: AccessControl.create(
+          row.platformAccess.map((a) => ({
+            platform: a.platform as RepPlatform,
+            accessType: a.accessType as PlatformAccessType,
+          })),
+        ),
+        uplineRepId: row.uplineRepId ? RepId.of(row.uplineRepId) : null,
+        repType: row.repType as RepType | null,
+        bio: row.bio,
+        isEliteBlue: row.isEliteBlue,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      });
     });
   }
 
   async save(rep: Rep): Promise<void> {
+    const tenantId = TenantContext.get();
+
     const events = rep.domainEvents.map((e) => ({
+      tenantId,
       eventType: e.type,
       aggregateId: e.repId,
       payload: e.payload ?? {},
@@ -90,10 +96,10 @@ export class PrismaRepRepository implements IRepRepository {
       uplineRepId: rep.uplineRepId?.value ?? null,
     };
 
-    await this.prisma.client.$transaction(async (tx) => {
+    await this.prisma.withTenantTransaction(tenantId, async (tx) => {
       await tx.rep.upsert({
         where: { id: rep.id.value },
-        create: { id: rep.id.value, ...repData },
+        create: { id: rep.id.value, tenantId, ...repData },
         update: repData,
       });
 
@@ -103,6 +109,7 @@ export class PrismaRepRepository implements IRepRepository {
       if (accessEntries.length > 0) {
         await tx.repPlatformAccess.createMany({
           data: accessEntries.map((e) => ({
+            tenantId,
             repId: rep.id.value,
             platform: e.platform,
             accessType: e.accessType,
