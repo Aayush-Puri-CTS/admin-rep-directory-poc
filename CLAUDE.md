@@ -39,6 +39,10 @@ hook silently no-ops):
 If any of the above is wrong for this repo, fix it here first — the permission rules and the
 verification hook were written to match these assumptions, not the other way around.
 
+Never hand-write `migration.sql`: run `prisma migrate dev --create-only` to let Prisma diff
+`schema.prisma` and generate it, then manually append only what Prisma can't generate — RLS
+policies and backfills for new required columns.
+
 ## Hard rules — never violate these
 
 1. **No live data access.** Never connect, directly or via MCP, to a database or system containing
