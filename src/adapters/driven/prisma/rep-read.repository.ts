@@ -12,6 +12,7 @@ import { PlatformAccessType, RepPlatform } from '../../../domain/value-objects/a
 import { RepStatus } from '../../../domain/value-objects/rep-status';
 import { RepType } from '../../../domain/value-objects/rep-type';
 import { PrismaService } from '../../../infrastructure/prisma/prisma.service';
+import { TenantContext } from '../../../infrastructure/tenant/tenant-context';
 
 type PrismaRepWithAccess = PrismaRep & { platformAccess: RepPlatformAccess[] };
 
@@ -87,37 +88,43 @@ export class PrismaRepReadRepository implements IRepReadRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findById(repId: string): Promise<RepDetailView | null> {
-    const row = await this.prisma.client.rep.findUnique({
-      where: { id: repId },
-      include: { platformAccess: true },
+    return this.prisma.withTenantTransaction(TenantContext.get(), async (tx) => {
+      const row = await tx.rep.findUnique({
+        where: { id: repId },
+        include: { platformAccess: true },
+      });
+      return row ? toDetailView(row) : null;
     });
-    return row ? toDetailView(row) : null;
   }
 
   async search(filters: RepSearchFilters): Promise<RepSummaryView[]> {
-    const rows = await this.prisma.client.rep.findMany({
-      where: buildSearchWhere(filters),
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    return this.prisma.withTenantTransaction(TenantContext.get(), async (tx) => {
+      const rows = await tx.rep.findMany({
+        where: buildSearchWhere(filters),
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+      });
+      return rows.map(toSummaryView);
     });
-    return rows.map(toSummaryView);
   }
 
   async findDirectory(pagination: PaginationParams): Promise<RepDirectoryPage> {
     const skip = (pagination.page - 1) * pagination.pageSize;
-    const [rows, total] = await Promise.all([
-      this.prisma.client.rep.findMany({
-        where: DIRECTORY_WHERE,
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        skip,
-        take: pagination.pageSize,
-      }),
-      this.prisma.client.rep.count({ where: DIRECTORY_WHERE }),
-    ]);
-    return {
-      items: rows.map(toSummaryView),
-      total,
-      page: pagination.page,
-      pageSize: pagination.pageSize,
-    };
+    return this.prisma.withTenantTransaction(TenantContext.get(), async (tx) => {
+      const [rows, total] = await Promise.all([
+        tx.rep.findMany({
+          where: DIRECTORY_WHERE,
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          skip,
+          take: pagination.pageSize,
+        }),
+        tx.rep.count({ where: DIRECTORY_WHERE }),
+      ]);
+      return {
+        items: rows.map(toSummaryView),
+        total,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+      };
+    });
   }
 }
