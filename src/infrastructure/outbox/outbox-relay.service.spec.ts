@@ -4,6 +4,7 @@ import { OutboxRelayService } from './outbox-relay.service';
 
 interface FakeOutboxEvent {
   id: string;
+  tenantId: string;
   eventType: string;
   aggregateId: string;
   occurredAt: Date;
@@ -15,6 +16,7 @@ interface FakeOutboxEvent {
 function makeEvent(overrides: Partial<FakeOutboxEvent> = {}): FakeOutboxEvent {
   return {
     id: 'evt-1',
+    tenantId: 'tenant-1',
     eventType: 'RepCreated',
     aggregateId: 'rep-1',
     occurredAt: new Date('2025-01-01'),
@@ -28,12 +30,17 @@ function makeEvent(overrides: Partial<FakeOutboxEvent> = {}): FakeOutboxEvent {
 function makePrisma(events: FakeOutboxEvent[]) {
   const update = jest.fn().mockResolvedValue(undefined);
   const findMany = jest.fn().mockResolvedValue(events);
+  const withTenantTransaction = jest.fn((_tenantId: string, fn: (tx: unknown) => unknown) =>
+    fn({ outboxEvent: { update } }),
+  );
   return {
     prisma: {
       client: { outboxEvent: { findMany, update } },
+      withTenantTransaction,
     } as unknown as PrismaService,
     update,
     findMany,
+    withTenantTransaction,
   };
 }
 
@@ -113,5 +120,15 @@ describe('OutboxRelayService.relay()', () => {
     const { publisher, publish } = makePublisher();
     await new OutboxRelayService(prisma, publisher).relay();
     expect(publish).not.toHaveBeenCalled();
+  });
+
+  it('scopes each update to the event\'s own tenant, not a shared/global context', async () => {
+    const eventA = makeEvent({ id: 'evt-a', tenantId: 'tenant-a' });
+    const eventB = makeEvent({ id: 'evt-b', tenantId: 'tenant-b' });
+    const { prisma, withTenantTransaction } = makePrisma([eventA, eventB]);
+    const { publisher } = makePublisher();
+    await new OutboxRelayService(prisma, publisher).relay();
+    expect(withTenantTransaction).toHaveBeenCalledWith('tenant-a', expect.any(Function));
+    expect(withTenantTransaction).toHaveBeenCalledWith('tenant-b', expect.any(Function));
   });
 });
