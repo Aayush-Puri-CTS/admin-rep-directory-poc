@@ -8,6 +8,8 @@
   "packageManager": "pnpm@11.9.0",
   "scripts": {
     "build": "tsc --project tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "ts-node src/main.ts",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",
     "test:watch": "jest --watch",
