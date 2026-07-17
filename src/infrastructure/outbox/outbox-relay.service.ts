@@ -40,21 +40,40 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Single relay pass — queries unpublished events, publishes, marks as done or increments retryCount.
-   *
-   * The discovery query below runs across all tenants (the relay has no per-request tenant, so
-   * there is no TenantContext to scope it to) and therefore must run on a connection/role that
-   * isn't blocked by the tenant_isolation RLS policy for outbox_events. Once an event is in hand,
-   * every subsequent write for it goes through withTenantTransaction(event.tenantId, ...) so the
-   * RLS policy still fires and cross-tenant writes are impossible even if event.tenantId were ever
-   * wrong.
+   * The relay has no per-request TenantContext, so it can't discover pending events with one
+   * cross-tenant query under RLS (see ADR-003) — it must know which tenants to poll ahead of
+   * time. OUTBOX_RELAY_TENANT_IDS is an interim, manually-maintained stand-in for a real tenant
+   * registry; a tenant missing from this list silently never gets its events relayed.
    */
+  private getKnownTenantIds(): string[] {
+    return (process.env['OUTBOX_RELAY_TENANT_IDS'] ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+  }
+
+  /** Single relay pass — polls each known tenant in turn (see ADR-003) and relays its events. */
   async relay(): Promise<void> {
-    const events = await this.prisma.client.outboxEvent.findMany({
-      where: { publishedAt: null, retryCount: { lt: MAX_RETRIES } },
-      orderBy: { createdAt: 'asc' },
-      take: BATCH_SIZE,
-    });
+    const tenantIds = this.getKnownTenantIds();
+    if (tenantIds.length === 0) {
+      console.error('[OutboxRelay] OUTBOX_RELAY_TENANT_IDS is empty — no tenants will be relayed');
+      return;
+    }
+
+    for (const tenantId of tenantIds) {
+      await this.relayForTenant(tenantId);
+    }
+  }
+
+  /** Discovers and relays one tenant's unpublished events, all scoped via withTenantTransaction. */
+  private async relayForTenant(tenantId: string): Promise<void> {
+    const events = await this.prisma.withTenantTransaction(tenantId, (tx) =>
+      tx.outboxEvent.findMany({
+        where: { publishedAt: null, retryCount: { lt: MAX_RETRIES } },
+        orderBy: { createdAt: 'asc' },
+        take: BATCH_SIZE,
+      }),
+    );
 
     for (const event of events) {
       try {
@@ -64,7 +83,7 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
           event.occurredAt,
           event.payload as Record<string, unknown>,
         );
-        await this.prisma.withTenantTransaction(event.tenantId, (tx) =>
+        await this.prisma.withTenantTransaction(tenantId, (tx) =>
           tx.outboxEvent.update({
             where: { id: event.id },
             data: { publishedAt: new Date() },
@@ -72,7 +91,7 @@ export class OutboxRelayService implements OnModuleInit, OnModuleDestroy {
         );
       } catch (err: unknown) {
         console.error(`[OutboxRelay] Failed to publish event ${event.id} (${event.eventType})`, err);
-        await this.prisma.withTenantTransaction(event.tenantId, (tx) =>
+        await this.prisma.withTenantTransaction(tenantId, (tx) =>
           tx.outboxEvent.update({
             where: { id: event.id },
             data: { retryCount: { increment: 1 } },
