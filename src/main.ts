@@ -7,6 +7,12 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // CORS_ORIGIN unset (local dev) reflects the request's own Origin back, which is fine for a
+  // single local frontend but must be set to the real dashboard origin(s) in any shared environment.
+  app.enableCors({
+    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()) : true,
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: true }),
   );
