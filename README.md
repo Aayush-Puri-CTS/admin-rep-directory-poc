@@ -68,6 +68,13 @@ sharing a connection). The Platform team no longer needs to provision a per-tena
 this service — confirm both of these with Platform before relying on RLS in an environment they
 manage.
 
+**`OutboxRelayService` and RLS:** the relay has no per-request tenant, so it can't discover
+pending events with a single cross-tenant query under RLS. It polls the tenants listed in
+`OUTBOX_RELAY_TENANT_IDS` (comma-separated) one at a time instead — see
+[`/ADR/ADR-003-outbox-relay-rls-role.md`](./ADR/ADR-003-outbox-relay-rls-role.md). This is an
+interim, manually-maintained list: a tenant missing from it will never have its events relayed,
+silently. Keep it in sync with every tenant this deployment serves.
+
 ---
 
 ## Tech stack
