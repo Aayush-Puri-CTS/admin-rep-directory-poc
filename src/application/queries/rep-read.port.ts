@@ -49,8 +49,13 @@ export interface RepDirectoryPage {
   pageSize: number;
 }
 
+export interface PartyIdentityView {
+  partyId: string;
+}
+
 export interface IRepReadRepository {
   findById(repId: string): Promise<RepDetailView | null>;
   search(filters: RepSearchFilters): Promise<RepSummaryView[]>;
   findDirectory(pagination: PaginationParams): Promise<RepDirectoryPage>;
+  findByKeycloakUserId(keycloakUserId: string): Promise<PartyIdentityView | null>;
 }
