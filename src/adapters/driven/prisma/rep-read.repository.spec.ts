@@ -48,4 +48,35 @@ describe('PrismaRepReadRepository', () => {
       expect(page.items.map((r) => r.repId)).toEqual(['rep-a']);
     });
   });
+
+  describe('findByKeycloakUserId', () => {
+    it('resolves partyId for a keycloakUserId linked in the active tenant', async () => {
+      const linkedRep = makeFakeRepRow({ id: 'rep-a', tenantId: 'tenant-a', keycloakUserId: 'sub-123' });
+      const { prisma } = makeFakeTenantPrisma([linkedRep]);
+      const repo = new PrismaRepReadRepository(prisma);
+
+      const result = await TenantContext.run('tenant-a', () => repo.findByKeycloakUserId('sub-123'));
+
+      expect(result).toEqual({ partyId: 'rep-a' });
+    });
+
+    it("cannot resolve another tenant's keycloakUserId", async () => {
+      const linkedRep = makeFakeRepRow({ id: 'rep-b', tenantId: 'tenant-b', keycloakUserId: 'sub-123' });
+      const { prisma } = makeFakeTenantPrisma([linkedRep]);
+      const repo = new PrismaRepReadRepository(prisma);
+
+      const result = await TenantContext.run('tenant-a', () => repo.findByKeycloakUserId('sub-123'));
+
+      expect(result).toBeNull();
+    });
+
+    it('returns null for an unlinked keycloakUserId', async () => {
+      const { prisma } = makeFakeTenantPrisma([tenantARep]);
+      const repo = new PrismaRepReadRepository(prisma);
+
+      const result = await TenantContext.run('tenant-a', () => repo.findByKeycloakUserId('sub-unknown'));
+
+      expect(result).toBeNull();
+    });
+  });
 });
