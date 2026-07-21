@@ -24,6 +24,8 @@ export interface RepProps {
   repType: RepType | null;
   bio: string | null;
   isEliteBlue: boolean;
+  /** Keycloak `sub` claim; null until linked via a follow-up admin action (ADR-004). */
+  keycloakUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +42,7 @@ export class Rep {
   private _repType: RepType | null;
   private _bio: string | null;
   private _isEliteBlue: boolean;
+  private _keycloakUserId: string | null;
   private _updatedAt: Date;
   private readonly _domainEvents: RepDomainEvent[] = [];
 
@@ -56,6 +59,7 @@ export class Rep {
     this._repType = props.repType;
     this._bio = props.bio;
     this._isEliteBlue = props.isEliteBlue;
+    this._keycloakUserId = props.keycloakUserId;
     this.createdAt = props.createdAt;
     this._updatedAt = props.updatedAt;
   }
@@ -73,6 +77,7 @@ export class Rep {
       repType: props.repType ?? null,
       bio: null,
       isEliteBlue: false,
+      keycloakUserId: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -118,6 +123,9 @@ export class Rep {
   }
   get isEliteBlue(): boolean {
     return this._isEliteBlue;
+  }
+  get keycloakUserId(): string | null {
+    return this._keycloakUserId;
   }
   get updatedAt(): Date {
     return this._updatedAt;
@@ -226,6 +234,19 @@ export class Rep {
   setEliteBlue(enabled: boolean): void {
     this._isEliteBlue = enabled;
     this.touch();
+  }
+
+  /** Follow-up admin action (ADR-004) — links this Rep to its Keycloak `sub`. Idempotent. */
+  linkKeycloakAccount(keycloakUserId: string): void {
+    if (this._keycloakUserId === keycloakUserId) return;
+    this._keycloakUserId = keycloakUserId;
+    this.touch();
+    this.pushEvent({
+      type: 'RepKeycloakAccountLinked',
+      repId: this.id.value,
+      occurredAt: this._updatedAt,
+      payload: { keycloakUserId },
+    });
   }
 
   /** Call after the outbox has dispatched the accumulated events. */
