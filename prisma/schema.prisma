@@ -83,6 +83,10 @@ model Rep {
   bio         String?
   isEliteBlue Boolean   @default(false)
 
+  /// Keycloak `sub` claim, set as a follow-up admin action once the login is provisioned (ADR-004).
+  /// Null for Reps with no Keycloak account yet — a Party may legitimately exist before a login does.
+  keycloakUserId String?
+
   // Upline hierarchy — self-referential; null uplineRepId means this is a root Rep
   uplineRepId  String?
   uplineRep    Rep?    @relation("RepUpline", fields: [uplineRepId], references: [id])
@@ -99,6 +103,7 @@ model Rep {
   groupRelationships PartyRelationship[]
 
   @@index([tenantId])
+  @@unique([tenantId, keycloakUserId])
   @@map("reps")
 }
 
