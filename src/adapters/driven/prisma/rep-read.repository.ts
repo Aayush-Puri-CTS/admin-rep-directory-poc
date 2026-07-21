@@ -3,6 +3,7 @@ import type { Rep as PrismaRep, RepPlatformAccess } from '@prisma/client';
 import {
   IRepReadRepository,
   PaginationParams,
+  PartyIdentityView,
   RepDetailView,
   RepDirectoryPage,
   RepSearchFilters,
@@ -125,6 +126,14 @@ export class PrismaRepReadRepository implements IRepReadRepository {
         page: pagination.page,
         pageSize: pagination.pageSize,
       };
+    });
+  }
+
+  /** For the gateway/Lambda Authorizer to resolve party_id by keycloakUserId (ADR-004, interim). */
+  async findByKeycloakUserId(keycloakUserId: string): Promise<PartyIdentityView | null> {
+    return this.prisma.withTenantTransaction(TenantContext.get(), async (tx) => {
+      const row = await tx.rep.findFirst({ where: { keycloakUserId }, select: { id: true } });
+      return row ? { partyId: row.id } : null;
     });
   }
 }
