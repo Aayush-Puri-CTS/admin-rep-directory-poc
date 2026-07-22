@@ -1,5 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "agent": "coordinator",
 
   "permissions": {
     "deny": [
@@ -45,9 +46,12 @@
       "Bash(pnpm add *)",
       "Bash(git status)",
       "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git show*)",
       "Bash(git add*)",
       "Bash(git commit*)",
-      "Bash(git checkout -b task/*)"
+      "Bash(git restore .)",
+      "Bash(git checkout -b feat/*)"
     ]
   },
 
