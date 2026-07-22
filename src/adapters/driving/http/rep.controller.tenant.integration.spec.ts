@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
 
 import { CreateRepHandler } from '../../../application/commands/create-rep.handler';
+import { LinkRepKeycloakAccountHandler } from '../../../application/commands/link-rep-keycloak-account.handler';
 import { LinkRepToGroupHandler } from '../../../application/commands/link-rep-to-group.handler';
 import { RestoreRepHandler } from '../../../application/commands/restore-rep.handler';
 import { SoftDeleteRepHandler } from '../../../application/commands/soft-delete-rep.handler';
@@ -27,6 +28,7 @@ function buildProviders() {
     { provide: SoftDeleteRepHandler, useValue: { execute: noop } },
     { provide: RestoreRepHandler, useValue: { execute: noop } },
     { provide: LinkRepToGroupHandler, useValue: { execute: noop } },
+    { provide: LinkRepKeycloakAccountHandler, useValue: { execute: noop } },
     { provide: GetRepByIdHandler, useValue: { execute: jest.fn() } },
     { provide: SearchRepsHandler, useValue: { execute: jest.fn().mockResolvedValue([]) } },
     { provide: GetRepDirectoryHandler, useValue: { execute: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 }) } },
@@ -74,6 +76,13 @@ describe('TenantMiddleware wired in front of RepController', () => {
 
   it('returns 400 for GET /reps without X-Tenant-Id', async () => {
     const res = await request(app.getHttpServer()).get('/reps');
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for PATCH /reps/:repId/keycloak-account without X-Tenant-Id', async () => {
+    const res = await request(app.getHttpServer())
+      .patch('/reps/00000000-0000-0000-0000-000000000000/keycloak-account')
+      .send({ keycloakUserId: 'sub-123' });
     expect(res.status).toBe(400);
   });
 });

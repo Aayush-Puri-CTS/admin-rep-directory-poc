@@ -1,5 +1,6 @@
 import {
   Body,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -20,6 +21,7 @@ import {
 import { randomUUID } from 'crypto';
 
 import { CreateRepHandler } from '../../../application/commands/create-rep.handler';
+import { LinkRepKeycloakAccountHandler } from '../../../application/commands/link-rep-keycloak-account.handler';
 import { LinkRepToGroupHandler } from '../../../application/commands/link-rep-to-group.handler';
 import { RestoreRepHandler } from '../../../application/commands/restore-rep.handler';
 import { SoftDeleteRepHandler } from '../../../application/commands/soft-delete-rep.handler';
@@ -33,6 +35,7 @@ import { SearchRepsHandler } from '../../../application/queries/search-reps.hand
 
 import { CreateRepBodyDto } from './dtos/rep/create-rep.body.dto';
 import { DirectoryQueryDto } from './dtos/rep/directory.query.dto';
+import { LinkKeycloakAccountBodyDto } from './dtos/rep/link-keycloak-account.body.dto';
 import { LinkRepToGroupBodyDto } from './dtos/rep/link-rep-to-group.body.dto';
 import { SearchRepsQueryDto } from './dtos/rep/search-reps.query.dto';
 import { UpdateAccessControlBodyDto } from './dtos/rep/update-access-control.body.dto';
@@ -50,6 +53,7 @@ export class RepController {
     private readonly softDeleteRepHandler: SoftDeleteRepHandler,
     private readonly restoreRepHandler: RestoreRepHandler,
     private readonly linkRepToGroupHandler: LinkRepToGroupHandler,
+    private readonly linkRepKeycloakAccountHandler: LinkRepKeycloakAccountHandler,
     private readonly getRepByIdHandler: GetRepByIdHandler,
     private readonly searchRepsHandler: SearchRepsHandler,
     private readonly getRepDirectoryHandler: GetRepDirectoryHandler,
@@ -228,6 +232,23 @@ export class RepController {
     return { relationshipId };
   }
 
+  @Patch(':repId/keycloak-account')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Link a Rep to its Keycloak account (admin/provisioning follow-up action)' })
+  @ApiParam({ name: 'repId', format: 'uuid' })
+  @ApiResponse({ status: 204, description: 'Linked' })
+  @ApiResponse({ status: 400, description: 'Validation error' })
+  @ApiResponse({ status: 404, description: 'Rep not found' })
+  @ApiResponse({ status: 409, description: 'keycloakUserId already linked to another Rep in this tenant' })
+  async linkKeycloakAccount(
+    @Param('repId') repId: string,
+    @Body() dto: LinkKeycloakAccountBodyDto,
+  ): Promise<void> {
+    await this.linkRepKeycloakAccountHandler
+      .execute({ repId, keycloakUserId: dto.keycloakUserId })
+      .catch((err: unknown) => this.rethrowAsHttp(err));
+  }
+
   @Get(':repId/groups')
   @ApiOperation({ summary: 'Get Groups serviced by a Rep' })
   @ApiParam({ name: 'repId', format: 'uuid' })
@@ -240,6 +261,9 @@ export class RepController {
   private rethrowAsHttp(err: unknown): never {
     if (err instanceof Error && /not found/i.test(err.message)) {
       throw new NotFoundException(err.message);
+    }
+    if (err instanceof Error && /already linked/i.test(err.message)) {
+      throw new ConflictException(err.message);
     }
     throw err;
   }

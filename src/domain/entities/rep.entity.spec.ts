@@ -68,6 +68,10 @@ describe('Rep.create()', () => {
     expect(newRep().bio).toBeNull();
   });
 
+  it('defaults keycloakUserId to null', () => {
+    expect(newRep().keycloakUserId).toBeNull();
+  });
+
   it('defaults accessControl to all DISABLED', () => {
     const ac = newRep().accessControl;
     expect(ac.hasAccess(RepPlatform.ENROLLPRIME)).toBe(false);
@@ -105,6 +109,7 @@ describe('Rep.reconstitute()', () => {
       repType: RepType.GA,
       bio: 'Experienced rep.',
       isEliteBlue: true,
+      keycloakUserId: 'sub-123',
       createdAt: now,
       updatedAt: now,
     };
@@ -113,6 +118,7 @@ describe('Rep.reconstitute()', () => {
     expect(rep.repType).toBe(RepType.GA);
     expect(rep.bio).toBe('Experienced rep.');
     expect(rep.isEliteBlue).toBe(true);
+    expect(rep.keycloakUserId).toBe('sub-123');
     expect(rep.domainEvents).toHaveLength(0);
   });
 });
@@ -346,6 +352,39 @@ describe('setEliteBlue()', () => {
     rep.setEliteBlue(true);
     rep.setEliteBlue(false);
     expect(rep.isEliteBlue).toBe(false);
+  });
+});
+
+describe('linkKeycloakAccount()', () => {
+  it('sets keycloakUserId', () => {
+    const rep = activeRep();
+    rep.linkKeycloakAccount('sub-123');
+    expect(rep.keycloakUserId).toBe('sub-123');
+  });
+
+  it('raises RepKeycloakAccountLinked with keycloakUserId in payload', () => {
+    const rep = activeRep();
+    rep.linkKeycloakAccount('sub-123');
+    const evt = rep.domainEvents.find((e) => e.type === 'RepKeycloakAccountLinked');
+    expect(evt?.payload?.keycloakUserId).toBe('sub-123');
+  });
+
+  it('is a no-op (raises no event) when re-linked to the same value', () => {
+    const rep = activeRep();
+    rep.linkKeycloakAccount('sub-123');
+    rep.clearDomainEvents();
+    rep.linkKeycloakAccount('sub-123');
+    expect(rep.domainEvents).toHaveLength(0);
+  });
+
+  it('overwrites and raises a new event when linked to a different value', () => {
+    const rep = activeRep();
+    rep.linkKeycloakAccount('sub-123');
+    rep.clearDomainEvents();
+    rep.linkKeycloakAccount('sub-456');
+    expect(rep.keycloakUserId).toBe('sub-456');
+    expect(rep.domainEvents).toHaveLength(1);
+    expect(rep.domainEvents[0].type).toBe('RepKeycloakAccountLinked');
   });
 });
 

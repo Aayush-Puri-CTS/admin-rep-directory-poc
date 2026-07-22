@@ -27,6 +27,7 @@ export interface FakeRepRow {
   bio: string | null;
   isEliteBlue: boolean;
   uplineRepId: string | null;
+  keycloakUserId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +54,7 @@ export function makeFakeRepRow(overrides: Partial<FakeRepRow> = {}): FakeRepRow 
     bio: null,
     isEliteBlue: false,
     uplineRepId: null,
+    keycloakUserId: null,
     createdAt: new Date('2026-01-01'),
     updatedAt: new Date('2026-01-01'),
     ...overrides,
@@ -75,6 +77,12 @@ export function makeFakeTenantPrisma(seedReps: FakeRepRow[] = []) {
           Array.from(reps.values())
             .filter((r) => r.tenantId === tenantId)
             .map((r) => ({ ...r, platformAccess: [] })),
+        findFirst: async ({ where }: { where: { keycloakUserId?: string | null } }) => {
+          const row = Array.from(reps.values()).find(
+            (r) => r.tenantId === tenantId && r.keycloakUserId === where.keycloakUserId,
+          );
+          return row ? { id: row.id } : null;
+        },
         count: async () => Array.from(reps.values()).filter((r) => r.tenantId === tenantId).length,
         upsert: async ({
           where,
@@ -90,6 +98,26 @@ export function makeFakeTenantPrisma(seedReps: FakeRepRow[] = []) {
           // touch a row outside the active tenant is rejected, not silently applied.
           if (existing && existing.tenantId !== tenantId) {
             throw new Error('row-level security policy violation on "reps"');
+          }
+          const nextKeycloakUserId = (update.keycloakUserId ?? create.keycloakUserId) as
+            | string
+            | null
+            | undefined;
+          if (nextKeycloakUserId != null) {
+            const conflict = Array.from(reps.values()).find(
+              (r) =>
+                r.id !== where.id &&
+                r.tenantId === tenantId &&
+                r.keycloakUserId === nextKeycloakUserId,
+            );
+            if (conflict) {
+              const error = new Error(
+                'Unique constraint failed on the fields: (`tenantId`,`keycloakUserId`)',
+              ) as Error & { code: string; meta: { target: string[] } };
+              error.code = 'P2002';
+              error.meta = { target: ['tenantId', 'keycloakUserId'] };
+              throw error;
+            }
           }
           const row = (existing ? { ...existing, ...update } : { ...create, tenantId }) as FakeRepRow;
           reps.set(where.id, row);

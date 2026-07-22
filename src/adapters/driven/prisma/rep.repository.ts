@@ -58,6 +58,7 @@ export class PrismaRepRepository implements IRepRepository {
         repType: row.repType as RepType | null,
         bio: row.bio,
         isEliteBlue: row.isEliteBlue,
+        keycloakUserId: row.keycloakUserId,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
       });
@@ -94,14 +95,27 @@ export class PrismaRepRepository implements IRepRepository {
       bio: rep.bio,
       isEliteBlue: rep.isEliteBlue,
       uplineRepId: rep.uplineRepId?.value ?? null,
+      keycloakUserId: rep.keycloakUserId,
     };
 
     await this.prisma.withTenantTransaction(tenantId, async (tx) => {
-      await tx.rep.upsert({
-        where: { id: rep.id.value },
-        create: { id: rep.id.value, tenantId, ...repData },
-        update: repData,
-      });
+      try {
+        await tx.rep.upsert({
+          where: { id: rep.id.value },
+          create: { id: rep.id.value, tenantId, ...repData },
+          update: repData,
+        });
+      } catch (err: unknown) {
+        if (
+          err instanceof Error &&
+          'code' in err &&
+          (err as { code: unknown }).code === 'P2002' &&
+          /keycloakUserId/.test(JSON.stringify((err as { meta?: unknown }).meta ?? ''))
+        ) {
+          throw new Error('keycloakUserId is already linked to another Rep in this tenant');
+        }
+        throw err;
+      }
 
       // Sync platform access as a full replacement
       await tx.repPlatformAccess.deleteMany({ where: { repId: rep.id.value } });

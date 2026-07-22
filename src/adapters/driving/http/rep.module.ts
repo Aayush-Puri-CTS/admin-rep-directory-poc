@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { CreateRepHandler } from '../../../application/commands/create-rep.handler';
+import { LinkRepKeycloakAccountHandler } from '../../../application/commands/link-rep-keycloak-account.handler';
 import { LinkRepToGroupHandler } from '../../../application/commands/link-rep-to-group.handler';
 import { RestoreRepHandler } from '../../../application/commands/restore-rep.handler';
 import { SoftDeleteRepHandler } from '../../../application/commands/soft-delete-rep.handler';
@@ -56,6 +57,12 @@ import { RepController } from './rep.controller';
       provide: RestoreRepHandler,
       useFactory: (prisma: PrismaService, outbox: OutboxService) =>
         new RestoreRepHandler(new PrismaRepRepository(prisma, outbox)),
+      inject: [PrismaService, OutboxService],
+    },
+    {
+      provide: LinkRepKeycloakAccountHandler,
+      useFactory: (prisma: PrismaService, outbox: OutboxService) =>
+        new LinkRepKeycloakAccountHandler(new PrismaRepRepository(prisma, outbox)),
       inject: [PrismaService, OutboxService],
     },
     {

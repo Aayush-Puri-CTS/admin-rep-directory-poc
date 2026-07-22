@@ -74,5 +74,36 @@ describe('PrismaRepRepository', () => {
         expect.arrayContaining([expect.objectContaining({ tenantId: 'tenant-a', eventType: 'RepCreated' })]),
       );
     });
+
+    it('persists keycloakUserId', async () => {
+      const { prisma, reps } = makeFakeTenantPrisma([]);
+      const repo = new PrismaRepRepository(prisma, new OutboxService());
+      const rep = makeRep();
+      rep.linkKeycloakAccount('sub-123');
+
+      await TenantContext.run('tenant-a', () => repo.save(rep));
+
+      expect(reps.get('rep-1')?.keycloakUserId).toBe('sub-123');
+    });
+
+    it('rejects reusing a keycloakUserId already linked to another Rep in the same tenant', async () => {
+      const existing = makeFakeRepRow({ id: 'rep-1', tenantId: 'tenant-a', keycloakUserId: 'sub-123' });
+      const { prisma } = makeFakeTenantPrisma([existing]);
+      const repo = new PrismaRepRepository(prisma, new OutboxService());
+      const rep = makeRep({ id: 'rep-2' });
+      rep.linkKeycloakAccount('sub-123');
+
+      await expect(TenantContext.run('tenant-a', () => repo.save(rep))).rejects.toThrow(/already linked/);
+    });
+
+    it('allows the same keycloakUserId for Reps in different tenants', async () => {
+      const existing = makeFakeRepRow({ id: 'rep-1', tenantId: 'tenant-a', keycloakUserId: 'sub-123' });
+      const { prisma } = makeFakeTenantPrisma([existing]);
+      const repo = new PrismaRepRepository(prisma, new OutboxService());
+      const rep = makeRep({ id: 'rep-2' });
+      rep.linkKeycloakAccount('sub-123');
+
+      await expect(TenantContext.run('tenant-b', () => repo.save(rep))).resolves.toBeUndefined();
+    });
   });
 });
