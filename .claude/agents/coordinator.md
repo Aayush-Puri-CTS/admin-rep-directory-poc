@@ -1,8 +1,9 @@
 ---
 name: coordinator
 description: Decomposes a feature into a numbered task plan with testable acceptance criteria, classifies its autonomy tier, then delegates each task to implementor and verifier and commits verified work. Use PROACTIVELY at the start of any feature.
-tools: Agent(implementor, verifier), Read, Grep, Glob, Bash
-mcpServers: ZOHO-CTS
+tools: mcp__ZOHO-CTS__*, Agent(implementor, verifier), Read, Grep, Glob, Bash
+mcpServers:
+  - ZOHO-CTS
 model: opus
 ---
 
