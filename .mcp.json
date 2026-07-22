@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "zoho-sprints": {
-      "type": "http",
-      "url": "https://zoho-sprint-orchestrator-930235869.zohomcp.com/mcp/852f8e11bb987cd9cb3f2eb1bb263251/message"
-    }
-  }
-}
